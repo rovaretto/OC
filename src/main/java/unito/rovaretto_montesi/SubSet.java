@@ -1,15 +1,15 @@
 package unito.rovaretto_montesi;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 public class SubSet {
     int i;
     int j;
     int k;
 
-    List<Integer> jobList;
+    public List<Integer> jobList;
 
     JobSet jobSet = JobSet.getJobSet();
 
@@ -59,5 +59,17 @@ public class SubSet {
                 ", jobList=" + jobList +
                 ", jobSet=" + jobSet +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof SubSet subSet)) return false;
+        return Objects.equals(jobList, subSet.jobList);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(jobList);
     }
 }
