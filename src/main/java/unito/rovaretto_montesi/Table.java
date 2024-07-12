@@ -4,7 +4,7 @@ import java.util.*;
 
 public class Table {
     private final JobSet jobSet = JobSet.getJobSet();
-    private final HashMap<List<Integer>,Integer[]> tardiness;
+    private final HashMap<List<Integer>,Solution[]> tardiness;
 
     /*conta i table hit e miss*/
     private int countTableHit =0;
@@ -23,38 +23,46 @@ public class Table {
             for(int j = 1; j <= n; j++){
                 for(int k = 1; k <= n; k++){
                     SubSet s = jobSet.generateSubset(i, j, k);
-                    tardiness.put(s.jobList, new Integer[P]);
+                    tardiness.put(s.jobList, new Solution[P]);
                 }
             }
         }
-        tardiness.put(jobSet.getJobList(), new Integer[P]);
+        System.out.println(tardiness.size());
+        tardiness.put(jobSet.getJobList(), new Solution[P]);
     }
 
     public void initialize(){
         for(List<Integer> s : tardiness.keySet()){
             if(s.isEmpty()){
-                Arrays.fill(tardiness.get(s), 0);
+                Solution solution = new Solution();
+                solution.tardiness = 0;
+                solution.jobs = new ArrayList<>();
+                Arrays.fill(tardiness.get(s), solution);
             }
 
             if(s.size() == 1){
                 int j = s.getFirst();
                 for(int i = 0; i < tardiness.get(s).length; i++){
-                    tardiness.get(s)[i] = jobSet.getWeight(j) * Math.max(0, i + jobSet.getProcessingTime(j) - jobSet.getDueDate(j));
+                    Solution solution = new Solution();
+                    solution.tardiness = jobSet.getWeight(j) * Math.max(0, i + jobSet.getProcessingTime(j) - jobSet.getDueDate(j));
+                    solution.jobs = new ArrayList<>();
+                    solution.jobs.add(j);
+                    tardiness.get(s)[i] = solution;
                 }
             }
         }
     }
 
 
-    private Integer resolve(SubSet s, int t) {
+    private Solution resolve(SubSet s, int t) {
         if(tardiness.get(s.jobList)[t] !=null){
             countTableHit++;
             return tardiness.get(s.jobList)[t];
         }
         countTableMiss++;
 
-        int shortcutResult = shortcutResolution(s,t);
-        if(shortcutResult != -1){
+        Solution shortcutResult = shortcutResolution(s,t);
+        if(shortcutResult != null){
             countShortcuttedSolution++;
             return shortcutResult;
         }
@@ -67,21 +75,24 @@ public class Table {
         List<Integer> delta = restrictionOfDelta(s,t);
 //        List<Integer> delta = IntStream.rangeClosed(0,n-k).boxed().toList();
 
-        List<Integer> result = new ArrayList<>();
+        List<Solution> result = new ArrayList<>();
         for(int d : delta){
             SubSet s1 = jobSet.generateSubset(i, kPrimo + d, kPrimo);
-            Integer res1 = resolve(s1, t);
+            Solution res1 = resolve(s1, t);
 
             int cKprimoDelta = t + s1.jobList.stream().map(jobSet::getProcessingTime).reduce(0, Integer::sum) + jobSet.getProcessingTime(kPrimo);
             Integer res2 = jobSet.getWeight(kPrimo) * Math.max(0, cKprimoDelta - jobSet.getDueDate(kPrimo));
 
             SubSet s2 = jobSet.generateSubset(kPrimo + d + 1, j, kPrimo);
-            Integer res3 = resolve(s2, cKprimoDelta);
+            Solution res3 = resolve(s2, cKprimoDelta);
 
-            result.add(res1+res2+res3);
+            Solution solutionFinal = new Solution();
+            solutionFinal.tardiness =res1.tardiness+res2+res3.tardiness;
+            solutionFinal.createSolution(res1.jobs,kPrimo,res3.jobs);
+            result.add(solutionFinal);
         }
         countEqResolved += result.size();
-        return result.stream().min(Integer::compare).get();
+        return result.stream().min(Comparator.comparing(Solution::getTardiness)).get();
     }
 
     public List<Integer> restrictionOfDelta(SubSet subSet, Integer t){
@@ -136,44 +147,61 @@ public class Table {
         return restrictions;
     }
 
-    private Integer shortcutResolution(SubSet s, int t){
+    private Solution shortcutResolution(SubSet s, int t){
         List<Integer> earlierDeadline =  sortByNewDueDate(createEarlierDeadline(s,t));
         List<Integer> inducedOrderLaterDeadLine = sortByNewDueDate(createLaterDeadline(s,t));
 
         /*Applicabile theorem 4*/
         if(precondTheorem4(s.jobList, t)){
             System.out.println("teorema 4 normal");
-            return calcolaTardy(s.jobList,t);
+            Solution solution = new Solution();
+            solution.tardiness = jobSet.calculateTardiness(s.jobList,t);
+            solution.jobs = s.jobList;
+            return solution;
         }
 
         if(precondTheorem4(earlierDeadline,t)){
             System.out.println("teorema 4 earlier");
-            return calcolaTardy(earlierDeadline,t);
+            Solution solution = new Solution();
+            solution.tardiness = jobSet.calculateTardiness(earlierDeadline,t);
+            solution.jobs = earlierDeadline;
+            return solution;
         }
 
         if(precondTheorem4(inducedOrderLaterDeadLine,t)){
             System.out.println("teorema 4 later");
-            return calcolaTardy(inducedOrderLaterDeadLine,t);
+            Solution solution = new Solution();
+            solution.tardiness = jobSet.calculateTardiness(inducedOrderLaterDeadLine,t);
+            solution.jobs = inducedOrderLaterDeadLine;
+            return solution;
         }
 
         /*Applicabile theorema 5*/
         if(precondTheorem5(s.jobList, t)){
             System.out.println("teorema 5 normal");
-            return calcolaTardy(s.jobList,t);
+            Solution solution = new Solution();
+            solution.tardiness = jobSet.calculateTardiness(s.jobList,t);
+            solution.jobs = s.jobList;
+            return solution;
         }
 
         if(precondTheorem5(earlierDeadline,t)){
             System.out.println("teorema 5 earlier");
-
-            return calcolaTardy(earlierDeadline,t);
+            Solution solution = new Solution();
+            solution.tardiness = jobSet.calculateTardiness(earlierDeadline,t);
+            solution.jobs = earlierDeadline;
+            return solution;
         }
 
         if(precondTheorem5(inducedOrderLaterDeadLine,t)){
             System.out.println("teorema 5 later");
-            return calcolaTardy(inducedOrderLaterDeadLine,t);
+            Solution solution = new Solution();
+            solution.tardiness = jobSet.calculateTardiness(inducedOrderLaterDeadLine, t);
+            solution.jobs = inducedOrderLaterDeadLine;
+            return solution;
         }
 
-        return -1;
+        return null;
     }
 
     private HashMap<Integer, Integer> createEarlierDeadline(SubSet s, int t) {
@@ -210,9 +238,6 @@ public class Table {
 
         for(int k : s.jobList){
             if(k == s.jobList.getFirst())deadLine.put(k, jobSet.getDueDate(k));
-            if(k == 5){
-                System.out.println();
-            }
             deadLine.put(k, jobSet.getDueDate(k));
             while (true){
                 List<Integer> sK = new ArrayList<>();
@@ -276,23 +301,15 @@ public class Table {
         return countTardy <= 1;
     }
 
-    public Integer calcolaTardy(List<Integer> ar, int t){
-        int time = t;
-        int tardy = 0;
-        for (Integer i : ar){
-            time += jobSet.getProcessingTime(i);
-            tardy += Math.max(0,time - jobSet.getDueDate(i));
-        }
-        return tardy;
-    }
-
     public static void main(String[] args) {
         Table t = new Table();
         t.initialize();
 
-        SubSet s = t.jobSet.generateSubset(1,12,-1);
+        SubSet s = t.jobSet.generateSubset(1, JobSet.nElem,-1);
         System.out.println("---------------");
-        System.out.println("Total Tardiness: " + t.resolve(s, 0));
+        Solution solution = t.resolve(s, 0);
+        System.out.println("Total Tardiness: " + solution);
+        System.out.println("tardiness: " + t.jobSet.calculateTardiness(solution.jobs,0));
         System.out.println("Table Hit: " + t.countTableHit);
         System.out.println("Table Miss: " + t.countTableMiss);
         System.out.println("Equation Resolved: " + t.countEqResolved);

@@ -3,6 +3,7 @@ package unito.rovaretto_montesi;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 
 public class JobSet {
     List<Integer> jobList;
@@ -12,24 +13,17 @@ public class JobSet {
 
     Integer kMax;
 
+    public static int nElem = 109;
+
 
     private static JobSet jobSet;
 
     public static JobSet getJobSet(){
         if(jobSet==null){
             List<Integer> job = new ArrayList<>();
-            job.add(1);
-            job.add(2);
-            job.add(3);
-            job.add(4);
-            job.add(5);
-            job.add(6);
-            job.add(7);
-            job.add(8);
-            job.add(9);
-            job.add(10);
-            job.add(11);
-            job.add(12);
+            for (int i = 1; i <= nElem; i++) {
+                job.add(i);
+            }
 
 
             HashMap<Integer,Integer> processTime = new HashMap<>();
@@ -41,10 +35,15 @@ public class JobSet {
             processTime.put(6,102);
             processTime.put(7,96);
             processTime.put(8,88);
-            processTime.put(9,50);
-            processTime.put(10,123);
-            processTime.put(11,102);
-            processTime.put(12,140);
+            Random r = new Random();
+            for (int i = 9; i <= nElem; i++) {
+                int val = 50 + r.nextInt(150);
+                if(!processTime.containsValue(val)){
+                    processTime.put(i,val);
+                }else {
+                    i--;
+                }
+            }
 
 
 
@@ -57,24 +56,18 @@ public class JobSet {
             dueDate.put(6,400);
             dueDate.put(7,683);
             dueDate.put(8,719);
-            dueDate.put(9,759);
-            dueDate.put(10,1000);
-            dueDate.put(11,1050);
-            dueDate.put(12,1200);
+            int base = 719;
+            for (int i = 9; i <= nElem; i++) {
+                base += 50 + r.nextInt(150);
+                dueDate.put(i,base);
+            }
 
             HashMap<Integer,Integer> weight = new HashMap<>();
-            weight.put(1,1);
-            weight.put(2,1);
-            weight.put(3,1);
-            weight.put(4,1);
-            weight.put(5,1);
-            weight.put(6,1);
-            weight.put(7,1);
-            weight.put(8,1);
-            weight.put(9,1);
-            weight.put(10,1);
-            weight.put(11,1);
-            weight.put(12,1);
+            for (int i = 1; i <= nElem; i++) {
+               int val = 1 + r.nextInt(5) ;
+                weight.put(i,val);
+            }
+
 
             JobSet.setJobSet( new JobSet(job,processTime,dueDate,weight));
         }
@@ -137,6 +130,15 @@ public class JobSet {
 
     public List<Integer> getJobList() {
         return jobList;
+    }
+
+    public Integer calculateTardiness(List<Integer> jobList, int t){
+        int tardiness = 0;
+        for (Integer job : jobList) {
+            t += processingTime.get(job);
+            tardiness += Math.max(0, weight.get(job) * (t - dueDate.get(job)));
+        }
+        return tardiness;
     }
 
     public HashMap<Integer, Integer> getProcessingTime() {
